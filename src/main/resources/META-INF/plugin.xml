@@ -1,0 +1,76 @@
+<idea-plugin>
+    <id>com.optionalconverter</id>
+    <name>Optional Converter</name>
+    <version>1.0.0</version>
+    <vendor email="dimentr12170@gmail.com"
+            url="https://github.com/dimen/optional-converter">
+        dimen
+    </vendor>
+
+    <description><![CDATA[
+<h2>Convert Getter Chains to Optional</h2>
+<p>
+    Wraps chained no-arg method calls in <code>Optional</code> to eliminate <code>NullPointerException</code>.
+</p>
+
+<h3>Before</h3>
+<pre><code>String value = a.getB().getC().getValue();</code></pre>
+
+<h3>After</h3>
+<pre><code>String value = Optional.ofNullable(a)
+        .map(A::getB)
+        .map(B::getC)
+        .map(C::getValue)
+        .orElse(null);</code></pre>
+
+<h3>Features</h3>
+<ul>
+    <li><b>Intention action</b> &mdash; place the caret on a getter chain, press <code>Alt+Enter</code>,
+        select <i>Convert to Optional chain</i></li>
+    <li><b>Refactor menu</b> &mdash; <code>Refactor &rarr; Convert to Optional Chain</code></li>
+    <li><b>Smart nullability</b> &mdash; uses <code>Optional.of()</code> when the root is provably
+        non-null (<code>new&nbsp;T()</code>, <code>this</code>, <code>@NotNull</code>, final-field initializers)
+        and <code>Optional.ofNullable()</code> otherwise</li>
+    <li><b>Method references</b> &mdash; generates <code>A::getB</code> style references;
+        falls back to lambdas when the type cannot be resolved</li>
+    <li><b>Auto-import</b> &mdash; adds <code>import java.util.Optional</code> automatically</li>
+</ul>
+
+<h3>Supported patterns</h3>
+<ul>
+    <li><code>a.getB().getC()</code> &mdash; explicit root</li>
+    <li><code>getA().getB().getC()</code> &mdash; implicit root (first call becomes <code>ofNullable</code> argument)</li>
+    <li><code>a.getB(x).getC().getD()</code> &mdash; converts only the no-arg tail</li>
+</ul>
+    ]]></description>
+
+    <change-notes><![CDATA[
+<h3>1.0.0</h3>
+<ul>
+    <li>Initial release</li>
+    <li>Intention action and Refactor menu integration</li>
+    <li>Smart <code>of()</code> vs <code>ofNullable()</code> based on nullability analysis</li>
+    <li>Method reference generation with lambda fallback</li>
+</ul>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <intentionAction>
+            <language>JAVA</language>
+            <className>com.optionalconverter.ConvertToOptionalChainIntention</className>
+            <category>Java/Refactorings</category>
+        </intentionAction>
+    </extensions>
+
+    <actions>
+        <action id="ConvertToOptionalChain"
+                class="com.optionalconverter.ConvertToOptionalChainAction"
+                text="Convert to Optional Chain"
+                description="Convert chained getter calls to Optional.ofNullable().map()...orElse(null)">
+            <add-to-group group-id="RefactoringMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

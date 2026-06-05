@@ -1,0 +1,10 @@
+<html>
+<body>
+Converts a chain of getter calls into an Optional chain with null-safe mapping.
+<br/><br/>
+Example:
+<pre>a.getB().getC()</pre>
+becomes:
+<pre>Optional.ofNullable(a).map(A::getB).map(B::getC).orElse(null)</pre>
+</body>
+</html>
