@@ -4,26 +4,26 @@ plugins {
 }
 
 group = "com.optionalconverter"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 intellij {
-    version.set("2024.1")
+    version.set("2021.3")
     type.set("IC")
     plugins.set(listOf("com.intellij.java"))
 }
 
 tasks {
     patchPluginXml {
-        sinceBuild.set("241")
+        sinceBuild.set("213")
         untilBuild.set("253.*")
     }
 

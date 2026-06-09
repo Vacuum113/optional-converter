@@ -1,6 +1,5 @@
 package com.optionalconverter;
 
-import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -26,11 +25,6 @@ public class ConvertToOptionalChainAction extends AnAction {
 
         WriteCommandAction.runWriteCommandAction(project, OptionalChainConverter.ACTION_NAME, null,
                 () -> OptionalChainConverter.convert(project, chain));
-    }
-
-    @Override
-    public @NotNull ActionUpdateThread getActionUpdateThread() {
-        return ActionUpdateThread.BGT;
     }
 
     @Nullable

@@ -4,6 +4,7 @@ import com.intellij.codeInsight.NullableNotNullManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
 import com.intellij.psi.codeStyle.JavaCodeStyleManager;
+import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,8 +19,21 @@ public final class OptionalChainConverter {
 
     private OptionalChainConverter() {}
 
-    record ChainInfo(PsiExpression root, List<PsiMethodCallExpression> mapCalls,
-                     PsiMethodCallExpression outermost) {}
+    static final class ChainInfo {
+        private final PsiExpression root;
+        private final List<PsiMethodCallExpression> mapCalls;
+        private final PsiMethodCallExpression outermost;
+
+        ChainInfo(PsiExpression root, List<PsiMethodCallExpression> mapCalls, PsiMethodCallExpression outermost) {
+            this.root = root;
+            this.mapCalls = mapCalls;
+            this.outermost = outermost;
+        }
+
+        PsiExpression root() { return root; }
+        List<PsiMethodCallExpression> mapCalls() { return mapCalls; }
+        PsiMethodCallExpression outermost() { return outermost; }
+    }
 
     @Nullable
     static ChainInfo findChain(@NotNull PsiElement element) {
@@ -43,8 +57,8 @@ public final class OptionalChainConverter {
         PsiElement parent = outermost.getParent();
         while (parent instanceof PsiReferenceExpression) {
             PsiElement grandParent = parent.getParent();
-            if (grandParent instanceof PsiMethodCallExpression grandCall && !hasArgs(grandCall)) {
-                outermost = grandCall;
+            if (grandParent instanceof PsiMethodCallExpression && !hasArgs((PsiMethodCallExpression) grandParent)) {
+                outermost = (PsiMethodCallExpression) grandParent;
                 parent = outermost.getParent();
             } else {
                 break;
@@ -57,7 +71,8 @@ public final class OptionalChainConverter {
         List<PsiMethodCallExpression> calls = new ArrayList<>();
         PsiExpression current = outermostCall;
 
-        while (current instanceof PsiMethodCallExpression call) {
+        while (current instanceof PsiMethodCallExpression) {
+            PsiMethodCallExpression call = (PsiMethodCallExpression) current;
             if (hasArgs(call)) break;
             calls.add(call);
             current = call.getMethodExpression().getQualifierExpression();
@@ -79,7 +94,8 @@ public final class OptionalChainConverter {
 
         if (mapCalls.isEmpty()) return null;
 
-        if (root instanceof PsiReferenceExpression ref && ref.resolve() instanceof PsiClass) {
+        if (root instanceof PsiReferenceExpression
+                && ((PsiReferenceExpression) root).resolve() instanceof PsiClass) {
             return null;
         }
 
@@ -119,21 +135,27 @@ public final class OptionalChainConverter {
             return true;
         }
 
-        if (expression instanceof PsiReferenceExpression refExpr) {
-            PsiElement resolved = refExpr.resolve();
+        if (expression instanceof PsiReferenceExpression) {
+            PsiElement resolved = ((PsiReferenceExpression) expression).resolve();
 
-            if (resolved instanceof PsiVariable variable
-                    && variable.hasModifierProperty(PsiModifier.FINAL)) {
-                if (isDefinitelyNotNull(variable.getInitializer())) return true;
+            if (resolved instanceof PsiLocalVariable) {
+                if (!hasWriteUsages((PsiLocalVariable) resolved)
+                        && isDefinitelyNotNull(((PsiVariable) resolved).getInitializer())) {
+                    return true;
+                }
+            } else if (resolved instanceof PsiVariable
+                    && ((PsiVariable) resolved).hasModifierProperty(PsiModifier.FINAL)) {
+                if (isDefinitelyNotNull(((PsiVariable) resolved).getInitializer())) return true;
             }
 
-            if (resolved instanceof PsiModifierListOwner owner) {
-                return NullableNotNullManager.getInstance(expression.getProject()).isNotNull(owner, false);
+            if (resolved instanceof PsiModifierListOwner) {
+                return NullableNotNullManager.getInstance(expression.getProject())
+                        .isNotNull((PsiModifierListOwner) resolved, false);
             }
         }
 
-        if (expression instanceof PsiMethodCallExpression call) {
-            PsiMethod method = call.resolveMethod();
+        if (expression instanceof PsiMethodCallExpression) {
+            PsiMethod method = ((PsiMethodCallExpression) expression).resolveMethod();
             if (method != null) {
                 return NullableNotNullManager.getInstance(expression.getProject()).isNotNull(method, false);
             }
@@ -142,13 +164,25 @@ public final class OptionalChainConverter {
         return false;
     }
 
+    private static boolean hasWriteUsages(PsiLocalVariable variable) {
+        for (PsiReference ref : ReferencesSearch.search(variable).findAll()) {
+            PsiElement element = ref.getElement();
+            PsiElement parent = element.getParent();
+            if (parent instanceof PsiAssignmentExpression
+                    && PsiTreeUtil.isAncestor(((PsiAssignmentExpression) parent).getLExpression(), element, false)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean hasArgs(PsiMethodCallExpression call) {
         return call.getArgumentList().getExpressions().length > 0;
     }
 
     private static String resolveTypeFqn(PsiType type) {
-        if (!(type instanceof PsiClassType classType)) return null;
-        PsiClass psiClass = classType.resolve();
+        if (!(type instanceof PsiClassType)) return null;
+        PsiClass psiClass = ((PsiClassType) type).resolve();
         if (psiClass == null || psiClass instanceof PsiTypeParameter) return null;
         return psiClass.getQualifiedName();
     }
