@@ -149,6 +149,9 @@ public final class OptionalChainConverter {
             }
 
             if (resolved instanceof PsiModifierListOwner) {
+                if (resolved instanceof PsiParameter) {
+                    return hasDirectNotNullAnnotation((PsiModifierListOwner) resolved, expression.getProject());
+                }
                 return NullableNotNullManager.getInstance(expression.getProject())
                         .isNotNull((PsiModifierListOwner) resolved, false);
             }
@@ -161,6 +164,15 @@ public final class OptionalChainConverter {
             }
         }
 
+        return false;
+    }
+
+    private static boolean hasDirectNotNullAnnotation(PsiModifierListOwner owner, Project project) {
+        PsiModifierList modifierList = owner.getModifierList();
+        if (modifierList == null) return false;
+        for (String annotation : NullableNotNullManager.getInstance(project).getNotNulls()) {
+            if (modifierList.hasAnnotation(annotation)) return true;
+        }
         return false;
     }
 
