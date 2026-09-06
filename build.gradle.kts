@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.optionalconverter"
-version = "1.0.1"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
@@ -16,7 +16,7 @@ java {
 }
 
 intellij {
-    version.set("2021.3")
+    version.set("2024.1")
     type.set("IC")
     plugins.set(listOf("com.intellij.java"))
 }
